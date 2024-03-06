@@ -2,23 +2,18 @@ import os
 import cv2
 import numpy as np
 from PIL import Image
-
 import matplotlib.pyplot as plt
-import seaborn as sns #graphs
-from sklearn import metrics
+import seaborn as sns
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix
-
 import tensorflow as tf
-from tensorflow import keras
-from keras.models import Sequential #model layers
-from tensorflow.keras.models import Model
-import tensorflow.keras.backend as K
-
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Dropout, Flatten, BatchNormalization, Dense, Activation
 from tensorflow.keras.applications.densenet import DenseNet121
-from tensorflow.keras.layers import Input, Conv2D, Dense, Activation, AvgPool2D, GlobalAveragePooling2D, MaxPool2D, Conv2D, MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization, ReLU, concatenate
 
 def load_images_and_labels(fpath):
-    img_lst = []
+    images = []
     labels = []
     categories = os.listdir(fpath)
 
@@ -30,13 +25,10 @@ def load_images_and_labels(fpath):
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img_array = Image.fromarray(img, 'RGB')
             resized_img = img_array.resize((150, 150))
-            img_lst.append(np.array(resized_img))
+            images.append(np.array(resized_img))
             labels.append(index)
 
-    images = np.array(img_lst)
-    labels = np.array(labels)
-
-    return images, labels
+    return np.array(images), np.array(labels)
 
 fpath = "/home/liz/densenet-deepfake/dataset"
 images, labels = load_images_and_labels(fpath)
@@ -47,95 +39,93 @@ print("Images shape:", images.shape)
 print("Labels shape:", labels.shape)
 print("Data types - Images:", type(images), ", Labels:", type(labels))
 
-from sklearn.model_selection import train_test_split
-x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size = 0.2, random_state = random_seed)    
+x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=42)
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
 
 train_generator = train_datagen.flow_from_directory(
     fpath,
-    target_size = (150,150),
-    batch_size = 32,subset = 'training',
-    class_mode = 'binary'
+    target_size=(150,150),
+    batch_size=32,
+    class_mode='binary',
+    subset='training'
 )
-     
+
 validation_generator = train_datagen.flow_from_directory(
     fpath,
-    target_size = (150,150),
-    batch_size = 32,subset = 'validation',
-    class_mode = 'binary',shuffle=False
+    target_size=(150,150),
+    batch_size=32,
+    class_mode='binary',
+    subset='validation',
+    shuffle=False
 )
 
-dense_model = DenseNet121(input_shape=(150,150,3),include_top=False,weights="imagenet")
+dense_model = DenseNet121(input_shape=(150,150,3), include_top=False, weights="imagenet")
 for layer in dense_model.layers:
     layer.trainable=False
-model=Sequential()
-model.add(dense_model)
-model.add(Dropout(0.5))
-model.add(Flatten())
-model.add(BatchNormalization())
-model.add(Dense(2048,kernel_initializer='he_uniform'))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-model.add(Dropout(0.5))
-model.add(Dense(1024,kernel_initializer='he_uniform'))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-model.add(Dropout(0.5))
-model.add(Dense(1,activation='sigmoid'))
 
-model.summary()
+model = Sequential([
+    dense_model,
+    Dropout(0.5),
+    Flatten(),
+    BatchNormalization(),
+    Dense(2048, kernel_initializer='he_uniform'),
+    BatchNormalization(),
+    Activation('relu'),
+    Dropout(0.5),
+    Dense(1024, kernel_initializer='he_uniform'),
+    BatchNormalization(),
+    Activation('relu'),
+    Dropout(0.5),
+    Dense(1, activation='sigmoid')
+])
 
-import tensorflow as tf
-OPT    = tf.keras.optimizers.Adam(learning_rate=0.001)
-
-model.compile(loss='binary_crossentropy',
-              metrics=['accuracy'],
-              optimizer=OPT)
+opt = tf.keras.optimizers.Adam(learning_rate=0.001)
+model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=opt)
 
 hist = model.fit(
     train_generator,
-    epochs = 10,
-    validation_data = validation_generator
+    epochs=10,
+    validation_data=(x_test, y_test)
 )
 
-model.save('model_weights.h5')
+model.save_weights('model_weights.h5')
 
-plt.plot(hist.history['accuracy'])
-plt.plot(hist.history['val_accuracy'])
+plt.plot(hist.history['accuracy'], label='Train Accuracy')
+plt.plot(hist.history['val_accuracy'], label='Validation Accuracy')
 plt.title('Densenet Model Accuracy')
 plt.ylabel('Accuracy')
 plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper left', bbox_to_anchor=(1,1))
+plt.legend(loc='upper left')
 plt.show()
 
-plt.plot(hist.history['loss'])
-plt.plot(hist.history['val_loss'])
+plt.plot(hist.history['loss'], label='Train Loss')
+plt.plot(hist.history['val_loss'], label='Validation Loss')
 plt.title('Densenet Model Loss')
 plt.ylabel('Loss')
 plt.xlabel('Epoch')
-plt.legend(['Train', 'Validation'], loc='upper left', bbox_to_anchor=(1,1))
+plt.legend(loc='upper left')
 plt.show()
 
-y_true = validation_generator.classes
-y_pred = (model.predict(validation_generator) > 0.5).astype("int32")
-cm=confusion_matrix(y_true, y_pred)
+y_pred = model.predict(x_test) > 0.5
+cm = confusion_matrix(y_test, y_pred)
+sns.heatmap(cm, cmap="plasma", fmt="d", annot=True)
 
-sns.heatmap(cm,cmap="plasma",fmt="d",annot=True)
+model = load_model('model_weights.h5')
 
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import load_img,img_to_array
-
-model=load_model('./model_weights.h5')
-
-def predict(filepth):
-    img = load_img(filepth, target_size=(150,150))
-    img = img_to_array(img)
-    img = img / 255
-    plt.imshow(img)
-    plt.axis('off')
-    img = np.expand_dims(img,axis=0)
-    answer = model.predict(img)
-    if answer < 0.5:
-        print("The image is a deepfake ")
+def predict(file_path):
+    img = load_img(file_path, target_size=(150, 150))
+    img = img_to_array(img) / 255
+    img = np.expand_dims(img, axis=0)
+    prediction = model.predict(img)
+    if prediction < 0.5:
+        return "The image is a deepfake"
     else:
-        print("The image is of a real person ")
-        
+        return "The image is of a real person"
