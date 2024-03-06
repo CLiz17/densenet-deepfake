@@ -30,6 +30,7 @@ def load_images_and_labels(fpath):
 
     return np.array(images), np.array(labels)
 
+# Define paths and load data
 fpath = "/home/liz/densenet-deepfake/dataset"
 images, labels = load_images_and_labels(fpath)
 
@@ -39,8 +40,10 @@ print("Images shape:", images.shape)
 print("Labels shape:", labels.shape)
 print("Data types - Images:", type(images), ", Labels:", type(labels))
 
+# Split data into training and testing sets
 x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=42)
 
+# Data augmentation
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 train_datagen = ImageDataGenerator(
@@ -67,6 +70,7 @@ validation_generator = train_datagen.flow_from_directory(
     shuffle=False
 )
 
+# Define the model architecture
 dense_model = DenseNet121(input_shape=(150,150,3), include_top=False, weights="imagenet")
 for layer in dense_model.layers:
     layer.trainable=False
@@ -87,17 +91,21 @@ model = Sequential([
     Dense(1, activation='sigmoid')
 ])
 
+# Compile the model
 opt = tf.keras.optimizers.Adam(learning_rate=0.001)
 model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=opt)
 
+# Train the model
 hist = model.fit(
     train_generator,
     epochs=10,
     validation_data=(x_test, y_test)
 )
 
+# Save the model weights
 model.save_weights('model_weights.h5')
 
+# Plot accuracy and loss curves
 plt.plot(hist.history['accuracy'], label='Train Accuracy')
 plt.plot(hist.history['val_accuracy'], label='Validation Accuracy')
 plt.title('Densenet Model Accuracy')
@@ -114,12 +122,15 @@ plt.xlabel('Epoch')
 plt.legend(loc='upper left')
 plt.show()
 
+# Generate confusion matrix
 y_pred = model.predict(x_test) > 0.5
 cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, cmap="plasma", fmt="d", annot=True)
 
+# Load the trained model
 model = load_model('model_weights.h5')
 
+# Prediction function
 def predict(file_path):
     img = load_img(file_path, target_size=(150, 150))
     img = img_to_array(img) / 255
