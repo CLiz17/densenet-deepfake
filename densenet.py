@@ -27,11 +27,13 @@ def load_images_and_labels(folder_path):
             else:
                 test_images.append(image)
                 test_labels.append(category)
-                
+    print(train_images)
+           
     return (
         np.array(train_images), np.array(train_labels),
         np.array(test_images), np.array(test_labels)
     )
 
-folder_path = ""
+folder_path = "/home/liz/densenet-deepfake/dataset"
 x_train, y_train, x_test, y_test = load_images_and_labels(folder_path)
+
