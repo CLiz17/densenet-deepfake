@@ -63,3 +63,23 @@ validation_generator = train_datagen.flow_from_directory(
     batch_size = 32,subset = 'validation',
     class_mode = 'binary',shuffle=False
 )
+
+dense_model = DenseNet121(input_shape=(150,150,3),include_top=False,weights="imagenet")
+for layer in dense_model.layers:
+    layer.trainable=False
+model=Sequential()
+model.add(dense_model)
+model.add(Dropout(0.5))
+model.add(Flatten())
+model.add(BatchNormalization())
+model.add(Dense(2048,kernel_initializer='he_uniform'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+model.add(Dense(1024,kernel_initializer='he_uniform'))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
+model.add(Dropout(0.5))
+model.add(Dense(1,activation='sigmoid'))
+
+model.summary()
