@@ -17,18 +17,13 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.applications.densenet import DenseNet121
 from tensorflow.keras.layers import Input, Conv2D, Dense, Activation, AvgPool2D, GlobalAveragePooling2D, MaxPool2D, Conv2D, MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization, ReLU, concatenate
 
-import os
-import cv2
-import numpy as np
-from PIL import Image
-
-def load_images_and_labels(folder_path):
+def load_images_and_labels(fpath):
     img_lst = []
     labels = []
-    categories = os.listdir(folder_path)
+    categories = os.listdir(fpath)
 
     for index, category in enumerate(categories):
-        category_path = os.path.join(folder_path, category)
+        category_path = os.path.join(fpath, category)
         for image_name in os.listdir(category_path):
             image_path = os.path.join(category_path, image_name)
             img = cv2.imread(image_path)
@@ -43,11 +38,28 @@ def load_images_and_labels(folder_path):
 
     return images, labels
 
-folder_path = "/home/liz/densenet-deepfake/dataset"
-images, labels = load_images_and_labels(folder_path)
+fpath = "/home/liz/densenet-deepfake/dataset"
+images, labels = load_images_and_labels(fpath)
 
 print("No. of images loaded:", len(images))
 print("No. of labels loaded:", len(labels))
 print("Images shape:", images.shape)
 print("Labels shape:", labels.shape)
 print("Data types - Images:", type(images), ", Labels:", type(labels))
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size = 0.2, random_state = random_seed)    
+
+train_generator = train_datagen.flow_from_directory(
+    fpath,
+    target_size = (150,150),
+    batch_size = 32,subset = 'training',
+    class_mode = 'binary'
+)
+     
+validation_generator = train_datagen.flow_from_directory(
+    fpath,
+    target_size = (150,150),
+    batch_size = 32,subset = 'validation',
+    class_mode = 'binary',shuffle=False
+)
