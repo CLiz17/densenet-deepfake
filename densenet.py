@@ -83,3 +83,36 @@ model.add(Dropout(0.5))
 model.add(Dense(1,activation='sigmoid'))
 
 model.summary()
+
+import tensorflow as tf
+OPT    = tf.keras.optimizers.Adam(learning_rate=0.001)
+
+model.compile(loss='binary_crossentropy',
+              metrics=['accuracy'],
+              optimizer=OPT)
+
+hist = model.fit(
+    train_generator,
+    epochs = 10,
+    validation_data = validation_generator
+)
+
+model.save('model_weights.h5')
+
+plt.plot(hist.history['accuracy'])
+plt.plot(hist.history['val_accuracy'])
+plt.title('Densenet Model Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left', bbox_to_anchor=(1,1))
+plt.show()
+
+plt.plot(hist.history['loss'])
+plt.plot(hist.history['val_loss'])
+plt.title('Densenet Model Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left', bbox_to_anchor=(1,1))
+plt.show()
+
+y_true = validation_generator.classes
