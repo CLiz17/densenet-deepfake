@@ -116,3 +116,7 @@ plt.legend(['Train', 'Validation'], loc='upper left', bbox_to_anchor=(1,1))
 plt.show()
 
 y_true = validation_generator.classes
+y_pred = (model.predict(validation_generator) > 0.5).astype("int32")
+cm=confusion_matrix(y_true, y_pred)
+
+sns.heatmap(cm,cmap="plasma",fmt="d",annot=True)
