@@ -91,6 +91,14 @@ model.compile(loss='binary_crossentropy',
               metrics=['accuracy'],
               optimizer=OPT)
 
+hist = model.fit(
+    train_generator,
+    epochs = 10,
+    validation_data = validation_generator
+)
+
+model.save('model_weights.h5')
+
 plt.plot(hist.history['accuracy'])
 plt.plot(hist.history['val_accuracy'])
 plt.title('Densenet Model Accuracy')
