@@ -120,3 +120,22 @@ y_pred = (model.predict(validation_generator) > 0.5).astype("int32")
 cm=confusion_matrix(y_true, y_pred)
 
 sns.heatmap(cm,cmap="plasma",fmt="d",annot=True)
+
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.image import load_img,img_to_array
+
+model=load_model('./model_weights.h5')
+
+def predict(filepth):
+    img = load_img(filepth, target_size=(150,150))
+    img = img_to_array(img)
+    img = img / 255
+    plt.imshow(img)
+    plt.axis('off')
+    img = np.expand_dims(img,axis=0)
+    answer = model.predict(img)
+    if answer < 0.5:
+        print("The image is a deepfake ")
+    else:
+        print("The image is of a real person ")
+        
