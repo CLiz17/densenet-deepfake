@@ -38,10 +38,13 @@ print("No. of images loaded:", len(images))
 print("No. of labels loaded:", len(labels))
 print("Images shape:", images.shape)
 print("Labels shape:", labels.shape)
-print("Data types - Images:", type(images), ", Labels:", type(labels))
+# print("Data types - Images:", type(images), ", Labels:", type(labels))
 
 # Split data into training and testing sets
 x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=42)
+
+print("Training set size:", len(x_train)+len(y_train))
+print("Validation set size:", len(x_test)+len(y_test))
 
 # Data augmentation
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -53,21 +56,16 @@ train_datagen = ImageDataGenerator(
     horizontal_flip=True
 )
 
-train_generator = train_datagen.flow_from_directory(
-    fpath,
-    target_size=(150,150),
-    batch_size=32,
-    class_mode='binary',
-    subset='training'
+train_generator = train_datagen.flow(
+    x_train,
+    y_train,
+    batch_size=32
 )
 
-validation_generator = train_datagen.flow_from_directory(
-    fpath,
-    target_size=(150,150),
-    batch_size=32,
-    class_mode='binary',
-    subset='validation',
-    shuffle=False
+validation_generator = train_datagen.flow(
+    x_test,
+    y_test,
+    batch_size=32
 )
 
 # Define the model architecture
@@ -103,7 +101,7 @@ hist = model.fit(
 )
 
 # Save the model weights
-model.save_weights('model_weights.h5')
+model.save_weights('model.weights.h5')
 
 # Plot accuracy and loss curves
 plt.plot(hist.history['accuracy'], label='Train Accuracy')
@@ -128,7 +126,7 @@ cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, cmap="plasma", fmt="d", annot=True)
 
 # Load the trained model
-model = load_model('model_weights.h5')
+model = load_model('model.weights.h5')
 
 # Prediction function
 def predict(file_path):
