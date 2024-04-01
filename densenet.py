@@ -15,38 +15,37 @@ from tensorflow.keras.applications.densenet import DenseNet121
 def load_images_and_labels(fpath):
     images = []
     labels = []
-    categories = os.listdir(fpath)
 
-    for index, category in enumerate(categories):
-        category_path = os.path.join(fpath, category)
-        for image_name in os.listdir(category_path):
-            image_path = os.path.join(category_path, image_name)
-            img = cv2.imread(image_path)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img_array = Image.fromarray(img, 'RGB')
-            resized_img = img_array.resize((150, 150))
-            images.append(np.array(resized_img))
-            labels.append(index)
+    image_files = os.listdir(fpath)
+    for image_name in image_files:
+        image_path = os.path.join(fpath, image_name)
+        img = cv2.imread(image_path)
+        images.append(img)
+        label = extract_label_from_filename(image_name)
+        labels.append(label)
 
     return np.array(images), np.array(labels)
 
-# Define paths and load data
-fpath = "/home/liz/densenet-deepfake/dataset"
+def extract_label_from_filename(filename):
+    if "_0" in filename.lower():
+        return 0
+    elif "_1" in filename.lower():
+        return 1
+
+fpath = "/content/drive/MyDrive/dataset"
 images, labels = load_images_and_labels(fpath)
+
 
 print("No. of images loaded:", len(images))
 print("No. of labels loaded:", len(labels))
 print("Images shape:", images.shape)
 print("Labels shape:", labels.shape)
-# print("Data types - Images:", type(images), ", Labels:", type(labels))
 
-# Split data into training and testing sets
 x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=42)
 
 print("Training set size:", len(x_train)+len(y_train))
 print("Validation set size:", len(x_test)+len(y_test))
 
-# Data augmentation
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 train_datagen = ImageDataGenerator(
@@ -68,10 +67,9 @@ validation_generator = train_datagen.flow(
     batch_size=32
 )
 
-# Define the model architecture
-dense_model = DenseNet121(input_shape=(150,150,3), include_top=False, weights="imagenet")
+dense_model = DenseNet121(input_shape=(150,150,3), include_top=False, weights='imagenet')
 for layer in dense_model.layers:
-    layer.trainable=False
+    layer.trainable=True
 
 model = Sequential([
     dense_model,
@@ -89,21 +87,17 @@ model = Sequential([
     Dense(1, activation='sigmoid')
 ])
 
-# Compile the model
 opt = tf.keras.optimizers.Adam(learning_rate=0.001)
 model.compile(loss='binary_crossentropy', metrics=['accuracy'], optimizer=opt)
 
-# Train the model
 hist = model.fit(
     train_generator,
     epochs=10,
     validation_data=(x_test, y_test)
 )
 
-# Save the model weights
-model.save_weights('model.weights.h5')
+model.save('model3.h5')
 
-# Plot accuracy and loss curves
 plt.plot(hist.history['accuracy'], label='Train Accuracy')
 plt.plot(hist.history['val_accuracy'], label='Validation Accuracy')
 plt.title('Densenet Model Accuracy')
@@ -120,15 +114,12 @@ plt.xlabel('Epoch')
 plt.legend(loc='upper left')
 plt.show()
 
-# Generate confusion matrix
 y_pred = model.predict(x_test) > 0.5
 cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, cmap="plasma", fmt="d", annot=True)
 
-# Load the trained model
-model = load_model('model.weights.h5')
+model = load_model("/content/model3.h5")
 
-# Prediction function
 def predict(file_path):
     img = load_img(file_path, target_size=(150, 150))
     img = img_to_array(img) / 255
